@@ -23,7 +23,7 @@ LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 5e-4       # learning rate of the critic
 FIXED_ALPHA = None
 
-class Agent():
+class SimpleAgent():
     """Interacts with and learns from the environment."""
     
     def __init__(self, state_size, action_size, random_seed, hidden_size, action_prior="uniform"):
@@ -53,16 +53,11 @@ class Agent():
         
         # Critic Network (w/ Target Network)
         self.critic1 = Critic(state_size, action_size, random_seed, hidden_size).to(device)
-        self.critic2 = Critic(state_size, action_size, random_seed, hidden_size).to(device)
         
         self.critic1_target = Critic(state_size, action_size, random_seed,hidden_size).to(device)
         self.critic1_target.load_state_dict(self.critic1.state_dict())
 
-        self.critic2_target = Critic(state_size, action_size, random_seed,hidden_size).to(device)
-        self.critic2_target.load_state_dict(self.critic2.state_dict())
-
         self.critic1_optimizer = optim.Adam(self.critic1.parameters(), lr=LR_CRITIC, weight_decay=0)
-        self.critic2_optimizer = optim.Adam(self.critic2.parameters(), lr=LR_CRITIC, weight_decay=0) 
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
@@ -107,31 +102,24 @@ class Agent():
         next_action, log_pis_next = self.actor_local.evaluate(next_states)
 
         Q_target1_next = self.critic1_target(next_states.to(device), next_action.squeeze(0).to(device))
-        Q_target2_next = self.critic2_target(next_states.to(device), next_action.squeeze(0).to(device))
+        
 
         # take the mean of both critics for updating
-        Q_target_next = torch.min(Q_target1_next, Q_target2_next)
         
         if FIXED_ALPHA == None:
             # Compute Q targets for current states (y_i) Seite 15 - The inclusion of (1 - dones) allows SAC to properly handle terminal 
             # states by excluding the discount factor for terminal states and considering only the immediate rewards in those cases.
-            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
+            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target1_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
         else:
-            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
+            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target1_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
         # Compute critic loss
         Q_1 = self.critic1(states, actions).cpu()
-        Q_2 = self.critic2(states, actions).cpu()
         critic1_loss = 0.5*F.mse_loss(Q_1, Q_targets.detach())
-        critic2_loss = 0.5*F.mse_loss(Q_2, Q_targets.detach())
         # Update critics
         # critic 1
         self.critic1_optimizer.zero_grad()
         critic1_loss.backward()
         self.critic1_optimizer.step()
-        # critic 2
-        self.critic2_optimizer.zero_grad()
-        critic2_loss.backward()
-        self.critic2_optimizer.step()
         if step % d == 0:
         # ---------------------------- update actor ---------------------------- #
             if FIXED_ALPHA == None:
@@ -145,10 +133,10 @@ class Agent():
                 
                 self.alpha = alpha
                 # Compute actor loss
-                actor_loss = (alpha * log_pis - Q_target_next).mean()
+                actor_loss = (alpha * log_pis - Q_target1_next).mean()
                 #actor_loss = (alpha * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu() - policy_prior_log_probs ).mean()
             else:
-                actor_loss = (FIXED_ALPHA * log_pis - Q_target_next).mean()
+                actor_loss = (FIXED_ALPHA * log_pis - Q_target1_next).mean()
                 #actor_loss = (FIXED_ALPHA * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu()- policy_prior_log_probs ).mean()
             # Minimize the loss
             self.actor_optimizer.zero_grad()
@@ -157,7 +145,6 @@ class Agent():
 
             # ----------------------- update target networks ----------------------- #
             self.soft_update(self.critic1, self.critic1_target, TAU)
-            self.soft_update(self.critic2, self.critic2_target, TAU)
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.

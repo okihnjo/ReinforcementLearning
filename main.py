@@ -10,10 +10,15 @@ from torch.utils.tensorboard import SummaryWriter
 import argparse
 import plotly.express as px
 from agent import Agent
+from simple_agent import SimpleAgent
+from utils_sac import plot_reward
+import plotly.graph_objects as go
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def SAC(n_episodes=200, max_t=500, print_every=10):
+def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
+    
+        
     scores_deque = deque(maxlen=100)
     scores = []
     eps = []
@@ -28,7 +33,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10):
         score = 0
         for t in range(max_t):
 
-            if i_episode > 150:
+            if i_episode > 150 and comp_flag == False:
                 env.render()
             action = agent.act(state)
             action_v = action.numpy()
@@ -47,15 +52,16 @@ def SAC(n_episodes=200, max_t=500, print_every=10):
         writer.add_scalar("average_X", np.mean(scores_deque), i_episode)
         average_100_scores.append(np.mean(scores_deque))
         scores.append(score)
-        eps.append(eps)
+        eps.append(reward)
+        if i_episode % print_every == 0:      
+            fig = px.line(x=[x for x in range(len(eps))], y=eps)
+            fig.show()
         print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)), end="")
         if i_episode % print_every == 0:
             print('\rEpisode {}  Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)))
-    d = {"score":scores, "episodes":eps}
-    df = pd.DataFrame(d)    
-    fig = px.line(df, x="episodes", y="score")
-    fig.show()        
-    torch.save(agent.actor_local.state_dict(), args.info + ".pt")
+    
+    if agent_type=="new" : torch.save(agent.actor_local.state_dict(), args.info + ".pt") 
+    return eps
 
 
 
@@ -98,6 +104,9 @@ parser.add_argument("-bs", "--batch_size", type=int, default=256, help="Batch si
 parser.add_argument("-t", "--tau", type=float, default=1e-2, help="Softupdate factor tau, default is 1e-2")
 parser.add_argument("-g", "--gamma", type=float, default=0.99, help="discount factor gamma, default is 0.99")
 parser.add_argument("--saved_model", type=str, default=None, help="Load a saved model to perform a test run!")
+parser.add_argument("--agent_type", type=str, default="new", help="If new, then double q is used. Use given old, then simple version is executed")
+parser.add_argument("--compare", type=bool, default=False, help="If true, compare the two agents")
+
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -113,7 +122,9 @@ if __name__ == "__main__":
     LR_CRITIC = args.lr        # learning rate of the critic
     FIXED_ALPHA = args.alpha
     saved_model = args.saved_model
-    
+    agent_type = args.agent_type
+    comp_flag = args.compare
+
     t0 = time.time()
     writer = SummaryWriter("runs/"+args.info)
     env = gym.make(env_name)
@@ -125,13 +136,25 @@ if __name__ == "__main__":
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
     
-    agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-    
-    if saved_model != None:
-        agent.actor_local.load_state_dict(torch.load(saved_model))
-        play()
-    else:    
-        SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every)
+    if comp_flag == False:
+        if agent_type == "new":
+            agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+        else:
+            agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+        if saved_model != None:
+            agent.actor_local.load_state_dict(torch.load(saved_model))
+            play()
+        else:    
+            SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
+    else: 
+        agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+        rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
+        agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+        rews_2 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_1))], y=rews_1, mode="lines"))
+    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_2))], y=rews_2, mode="lines"))
+    fig.show()
     t1 = time.time()
     env.close()
     print("training took {} min!".format((t1-t0)/60))

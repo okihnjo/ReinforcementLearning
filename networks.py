@@ -63,7 +63,7 @@ class Actor(nn.Module):
         log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         return mu, log_std
     
-    def evaluate(self, state, epsilon=1e-6):
+    def evaluate_original(self, state, epsilon=1e-6):
         mu, log_std = self.forward(state)
         std = log_std.exp()
         dist = Normal(0, 1) # hier mu und std reinzumachen verschlechtert es enorm
@@ -74,8 +74,25 @@ class Actor(nn.Module):
         e = dist.sample().to(device)
         action = torch.tanh(mu + e * std) 
         log_prob = Normal(mu, std).log_prob(mu + e * std) - torch.log(1 - action.pow(2) + epsilon) # Seite 12
-# keine Summenschleife weil wir ja nur eine action nehmen 
+# keine Summenschleife weil wir ja nur eine action nehmen
         return action, log_prob
+ 
+    def evaluate(self, state, epsilon=1e-6):
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        
+        # to obtain actions, we sample a z-value from the obtained Gaussian distribution
+        # later, we will take the hyperbolic tangent of the z value to obtain our action. 
+        # (see below in the post).
+        z = normal.rsample()
+        
+        # we modify the log_pi computation as explained in the Haarnoja et al. paper
+        log_pi = (normal.log_prob(z) - torch.log(1 - (torch.tanh(z)).pow(2) + epsilon)).sum(1, keepdim=True)
+        next_action = torch.tanh(z)
+        return next_action, log_pi
+
+        
         
     
     def get_action(self, state):

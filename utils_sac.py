@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
+import plotly.graph_objects as go
 
 # Hyperparameter
 def initialize_weights(model: nn.Linear): 
@@ -33,3 +33,9 @@ The weights are then randomly initialized within the range (-lim, lim) to ensure
     fan_in = layer.weight.data.size()[0] # number of input_layer
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
+
+def plot_reward(rew: list): # returns the fig
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[x for x in range(len(rew))], y=rew, mode="lines"))
+
+    return fig

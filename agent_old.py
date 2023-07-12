@@ -93,7 +93,6 @@ class Agent():
         where:
             actor_target(state) -> action
             critic_target(state, action) -> Q-value
-
         Params
         ======
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
@@ -145,11 +144,23 @@ class Agent():
                 
                 self.alpha = alpha
                 # Compute actor loss
-                actor_loss = (alpha * log_pis - Q_target_next).mean()
-                #actor_loss = (alpha * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu() - policy_prior_log_probs ).mean()
+                if self._action_prior == "normal":
+                    policy_prior = MultivariateNormal(loc=torch.zeros(self.action_size), scale_tril=torch.ones(self.action_size).unsqueeze(0))
+                    policy_prior_log_probs = policy_prior.log_prob(actions_pred)
+                elif self._action_prior == "uniform":
+                    policy_prior_log_probs = 0.0
+    
+                actor_loss = (alpha * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu() - policy_prior_log_probs ).mean()
             else:
-                actor_loss = (FIXED_ALPHA * log_pis - Q_target_next).mean()
-                #actor_loss = (FIXED_ALPHA * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu()- policy_prior_log_probs ).mean()
+                
+                actions_pred, log_pis = self.actor_local.evaluate(states)
+                if self._action_prior == "normal":
+                    policy_prior = MultivariateNormal(loc=torch.zeros(self.action_size), scale_tril=torch.ones(self.action_size).unsqueeze(0))
+                    policy_prior_log_probs = policy_prior.log_prob(actions_pred)
+                elif self._action_prior == "uniform":
+                    policy_prior_log_probs = 0.0
+    
+                actor_loss = (FIXED_ALPHA * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu()- policy_prior_log_probs ).mean()
             # Minimize the loss
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
