@@ -13,32 +13,39 @@ from agent import Agent
 from simple_agent import SimpleAgent
 from utils_sac import plot_reward
 import plotly.graph_objects as go
+import numpy as np
+import laserhockey.laser_hockey_env as lh
+import gymnasium as gym
+from importlib import reload
+import copy
+import datetime
+
+np.set_printoptions(suppress=True)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
-    
-        
     scores_deque = deque(maxlen=100)
     scores = []
     eps = []
-
     average_100_scores = []
 
     for i_episode in range(1, n_episodes+1):
 
         state = env.reset()
         
-        state = state.reshape((1,state_size))
+       
         score = 0
         for t in range(max_t):
 
             if i_episode > 150 and comp_flag == False:
                 env.render()
-            action = agent.act(state)
-            action_v = action.numpy()
-            action_v = np.clip(action_v*action_high, action_low, action_high)
-            next_state, reward, done, info = env.step(action_v)
+             
+            action = agent.act(state[0]) # hier wurde was geändert, state enthält mehr infos
+            action_v = action.numpy()[0] # hier ebenfalls
+            a2 = np.zeros_like(action_v)
+            # action_v = np.clip(action_v*action_high, action_low, action_high)
+            next_state, reward, done,_, info = env.step(np.hstack([action_v,a2]))
             next_state = next_state.reshape((1,state_size))
             agent.step(state, action, reward, next_state, done, t)
             state = next_state
@@ -108,6 +115,7 @@ parser.add_argument("--agent_type", type=str, default="new", help="If new, then 
 parser.add_argument("--compare", type=bool, default=False, help="If true, compare the two agents")
 
 args = parser.parse_args()
+reload(lh)
 
 if __name__ == "__main__":
     env_name = args.env
@@ -126,8 +134,7 @@ if __name__ == "__main__":
     comp_flag = args.compare
 
     t0 = time.time()
-    writer = SummaryWriter("runs/"+args.info)
-    env = gym.envs.make(env_name)
+    env = lh.LaserHockeyEnv(mode=lh.LaserHockeyEnv.TRAIN_SHOOTING)
     action_high = env.action_space.high[0]
     action_low = env.action_space.low[0]
     torch.manual_seed(seed)
@@ -135,26 +142,7 @@ if __name__ == "__main__":
     np.random.seed(seed)
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
-    
-    if comp_flag == False:
-        if agent_type == "new":
-            agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        else:
-            agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        if saved_model != None:
-            agent.actor_local.load_state_dict(torch.load(saved_model))
-            play()
-        else:    
-            SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
-    else: 
-        agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
-        agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        rews_2 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_1))], y=rews_1, mode="lines"))
-    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_2))], y=rews_2, mode="lines"))
-    fig.show()
-    t1 = time.time()
+    agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+    rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=args.agent_type)
     env.close()
     print("training took {} min!".format((t1-t0)/60))
