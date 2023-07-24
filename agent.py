@@ -81,14 +81,12 @@ class Agent():
     
     def act(self, obs):
         """Returns actions for given state as per current policy."""
-        
-        # state = torch.FloatTensor(obs).to(device).unsqueeze(0)
         if str(type(obs)) == "<class 'numpy.ndarray'>":
             state = torch.from_numpy(obs).float().to(device)
         else:
-            state = torch.FloatTensor(state).to(device).unsqueeze(0)
+            state = torch.FloatTensor(obs).to(device).unsqueeze(0)
         action = self.actor_local.get_action(state).detach()
-        return action
+        return action.numpy() # von action zu action[0] und [0] macht kein sinn
 
     def learn(self, step, experiences, gamma, d=1):
         """Updates actor, critics and entropy_alpha parameters using given batch of experience tuples.

@@ -21,7 +21,7 @@ import copy
 import datetime
 
 np.set_printoptions(suppress=True)
-
+writer = SummaryWriter("runs/"+'test')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
@@ -38,15 +38,14 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
         score = 0
         for t in range(max_t):
 
-            if i_episode > 150 and comp_flag == False:
+            if i_episode > 15 and comp_flag == False:
                 env.render()
              
             action = agent.act(state) # hier wurde was geändert, state enthält mehr infos
-            action_v = action.numpy()[0] # hier ebenfalls
+            action_v = action # hier ebenfalls
             a2 = np.zeros_like(action_v)
             # action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done,_, info = env.step(np.hstack([action_v,a2]))
-            next_state = next_state.reshape((1,state_size))
             agent.step(state, action, reward, next_state, done, t)
             state = next_state
             score += reward
