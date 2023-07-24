@@ -160,3 +160,7 @@ cython_debug/
 #.idea/
 runs/sac/events.out.tfevents.1689191294.iMac-von-Okan.7772.0
 runs/sac/events.out.tfevents.1689191252.iMac-von-Okan.7730.0
+
+runs/sac/
+
+*.0
