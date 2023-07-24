@@ -32,7 +32,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
 
     for i_episode in range(1, n_episodes+1):
 
-        state = env.reset()
+        state, _ = env.reset()
         
        
         score = 0
@@ -41,7 +41,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
             if i_episode > 150 and comp_flag == False:
                 env.render()
              
-            action = agent.act(state[0]) # hier wurde was geändert, state enthält mehr infos
+            action = agent.act(state) # hier wurde was geändert, state enthält mehr infos
             action_v = action.numpy()[0] # hier ebenfalls
             a2 = np.zeros_like(action_v)
             # action_v = np.clip(action_v*action_high, action_low, action_high)

@@ -58,7 +58,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
             fig.show()
         print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)), end="")
         if i_episode % print_every == 0:
-            print('\rEpisode {}  Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)))
+            print(i_episode, score)
     
     if agent_type=="new" : torch.save(agent.actor_local.state_dict(), args.info + ".pt") 
     return eps
