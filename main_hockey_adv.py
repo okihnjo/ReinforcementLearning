@@ -19,35 +19,45 @@ import gymnasium as gym
 from importlib import reload
 import copy
 import datetime
+from laserhockey import hockey_env as hock_env
+
 
 np.set_printoptions(suppress=True)
 writer = SummaryWriter("runs/"+'test')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=500, max_t=500, print_every=50, agent_type="new"):
+    print(n_episodes)
     scores_deque = deque(maxlen=100)
+    opponent = hock_env.BasicOpponent(weak=True)
     scores = []
     eps = []
     average_100_scores = []
-    
+    touched = 0
+    s = -0.5
     for i_episode in range(1, n_episodes+1):
-
         state, _ = env.reset()
-        
-       
+        obs_agent2 = env.obs_agent_two()
         score = 0
+        first_time_touch = 1
         for t in range(max_t):
-
-            if i_episode > 180 and comp_flag == False:
+            action_ag_1 = agent.act(state)
+            action_ag_2 = opponent.act(obs_agent2)
+            if i_episode > 150 and comp_flag == False:
                 env.render()
-             
-            action = agent.act(state) # hier wurde was geändert, state enthält mehr infos
-            action_v = action # hier ebenfalls
-            a2 = np.zeros_like(action_v)
-            # action_v = np.clip(action_v*action_high, action_low, action_high)
-            next_state, reward, done,_, info = env.step(np.hstack([action_v,a2]))
-            agent.store_memory(state, action, reward, next_state, done, t)
+            next_state, reward, done,_, info = env.step(np.hstack([action_ag_1,action_ag_2]))
+            if info['reward_closeness_to_puck'] > 0:
+                print("here")
+            if s<info['reward_closeness_to_puck']:
+                s = info['reward_closeness_to_puck']
+                reward= reward + 500
+            else: 
+                reward = reward - 1
+            
+            first_time_touch = 1 - touched
+            agent.store_memory(state, action_ag_1, reward, next_state, done, t)
             state = next_state
+            obs_agent2 = env.obs_agent_two()
             score += reward
 
             if done:
@@ -66,6 +76,11 @@ def SAC(n_episodes=500, max_t=500, print_every=50, agent_type="new"):
         if i_episode % print_every == 0:
             print('\rEpisode {}  Reward: {:.2f}  Average100 Score: {:.2f} '.format(i_episode, score, np.mean(scores_deque)))
     
+        if len(agent.memory) < BATCH_SIZE:
+            continue
+        for i in range(32):
+            experiences = agent.memory.sample()
+            agent.learn(i, experiences, GAMMA)
     if agent_type=="new" : torch.save(agent.actor_local.state_dict(), args.info + ".pt") 
     return eps
 
@@ -99,7 +114,7 @@ def play():
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-env", type=str,default="Pendulum-v0", help="Environment name")
 parser.add_argument("-info", type=str, help="Information or name of the run")
-parser.add_argument("-ep", type=int, default=100, help="The amount of training episodes, default is 100")
+parser.add_argument("-ep", type=int, default=500, help="The amount of training episodes, default is 100")
 parser.add_argument("-seed", type=int, default=0, help="Seed for the env and torch network weights, default is 0")
 parser.add_argument("-lr", type=float, default=5e-4, help="Learning rate of adapting the network weights, default is 5e-4")
 parser.add_argument("-a", "--alpha", type=float, help="entropy alpha value, if not choosen the value is leaned by the agent")
@@ -142,7 +157,7 @@ if __name__ == "__main__":
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
     agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-    rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=args.agent_type)
+    rews_1 = SAC(n_episodes=args.ep, max_t=250, print_every=args.print_every, agent_type=args.agent_type)
     t1=time.time()
     env.close()
     print("training took {} min!".format((t1-t0)/60))

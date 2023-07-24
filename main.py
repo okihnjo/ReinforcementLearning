@@ -40,7 +40,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
             action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done, info = env.step(action_v)
             next_state = next_state.reshape((1,state_size))
-            agent.step(state, action, reward, next_state, done, t)
+            agent.store_memory(state, action, reward, next_state, done, t)
             state = next_state
             score += reward
 
@@ -53,10 +53,8 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
         average_100_scores.append(np.mean(scores_deque))
         scores.append(score)
         eps.append(reward)
-        if i_episode % print_every == 0:      
-            fig = px.line(x=[x for x in range(len(eps))], y=eps)
-            fig.show()
-        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)), end="")
+        
+        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score[0], np.mean(scores_deque)), end="")
         if i_episode % print_every == 0:
             print(i_episode, score)
     

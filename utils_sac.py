@@ -15,8 +15,8 @@ def initialize_weights(model: nn.Linear):
         torch.nn.init.constant_(model.bias, 0)
 
 
-def save_network(model: nn.Linear):
-    pass
+def save_network(model: nn.Module, info: str):
+    torch.save(model.state_dict(),"./models/" + info + ".pt") 
 
 def hidden_init(layer):
     """he Xavier initialization method assumes that the activations of the layer should have a variance of 1. This assumption helps in preventing the activations from vanishing or exploding during training.
