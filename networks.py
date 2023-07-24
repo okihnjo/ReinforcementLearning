@@ -106,7 +106,7 @@ class Actor(nn.Module):
         dist = Normal(0, 1)
         e      = dist.sample().to(device)
         action = torch.tanh(mu + e * std).cpu()
-        return action[0] # hier wurde [0] geändert
+        return action # von action[0] zu action
 
 class Critic(nn.Module):
     """Critic (Value) Model."""
