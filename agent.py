@@ -81,13 +81,13 @@ class Agent():
     
     def act(self, obs):
         """Returns actions for given state as per current policy."""
-        print(obs)
-        state = torch.FloatTensor(obs).to(device).unsqueeze(0)
-        #if str(type(state)) == "<class 'numpy.ndarray'>":
-        #    state = torch.from_numpy(state).float().to(device)
-        #else:
-        #    state = torch.FloatTensor(state).to(device).unsqueeze(0)
-        action = self.actor_local.get_action(state).detach()
+        if str(type(obs)) == "<class 'numpy.ndarray'>":
+            state = torch.from_numpy(obs).float().to(device)
+            action = self.actor_local.get_action(state).detach()
+            return action
+        else:
+            state = torch.FloatTensor(state).to(device).unsqueeze(0)
+
         return action
 
     def learn(self, step, experiences, gamma, d=1):
