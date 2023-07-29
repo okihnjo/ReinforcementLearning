@@ -40,11 +40,9 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
 
             if i_episode > 15 and comp_flag == False:
                 env.render()
-             
             action = agent.act(state) # hier wurde was geändert, state enthält mehr infos
             action_v = action # hier ebenfalls
             a2 = np.zeros_like(action_v)
-            # action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done,_, info = env.step(np.hstack([action_v,a2]))
             agent.step(state, action, reward, next_state, done, t)
             state = next_state

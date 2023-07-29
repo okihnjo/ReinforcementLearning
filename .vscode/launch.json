@@ -11,7 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-env", "Pendulum-v0", "-ep", "200", "-info", "sac", "-saved_model", "29.07.2023/16.41.25/trained_pendu.pt"]
+            "args": ["-env", "Pendulum-v0", "-ep", "20"]
+           // "args": ["-env", "Pendulum-v0", "-ep", "200", "-info", "sac", "-saved_model", "29.07.2023/16.41.25/trained_pendu.pt"]
         }
     ]
 }

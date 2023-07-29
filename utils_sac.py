@@ -46,8 +46,6 @@ The weights are then randomly initialized within the range (-lim, lim) to ensure
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
 
-
-
 def moving_mean(losses: tuple):
     fig = go.Figure()
     for i in range(len(losses)):
@@ -62,5 +60,11 @@ def moving_mean(losses: tuple):
 
 def load_model(model: nn.Linear, path: str):
     model.load_state_dict(torch.load(path))
+
+def plot_reward(rew: list):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[x for x in range(len(rew))], y=rew, mode="markers"))
+    fig.show()
+    go.Figure.write_image(fig, f"{d1}/{current_time}/images/reward.png")
 
 

@@ -11,36 +11,25 @@ import argparse
 import plotly.express as px
 from agent import Agent
 from simple_agent import SimpleAgent
-from utils_sac import  moving_mean, save_network, load_model
+from utils_sac import  moving_mean, save_network, load_model, plot_reward
 import plotly.graph_objects as go
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
-    actor_losses, critic_losses, critic2_losses, alpha_losses, avg_loss = [], [], [], [], []
-
-        
-    scores_deque = deque(maxlen=100)
+    actor_losses, critic_losses, critic2_losses, alpha_losses = [], [], [], []
     scores = []
-    eps = []
-
-    average_100_scores = []
-
+    average_score = []
     for i_episode in range(1, n_episodes+1):
-
         state = env.reset()
-        
-      
         score = 0
         for t in range(max_t):
-
             if i_episode > 198 and comp_flag == False:
                 env.render()
             action = agent.act(state)
             action_v = action
             action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done, info = env.step(action_v)
-            
             losses = agent.step(state, action, reward, next_state, done, t)
             if losses != None:
                 actor_losses.append(losses[0])
@@ -49,37 +38,28 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
                 alpha_losses.append(losses[3])
             state = next_state
             score += reward
-
             if done:
                 break 
         
-        scores_deque.append(score)
-        average_100_scores.append(np.mean(scores_deque))
+        average_score.append(np.mean(scores))
         scores.append(score)
-        eps.append(reward)
         if i_episode % print_every == 0:      
-            fig = px.line(x=[x for x in range(len(eps))], y=eps)
+            fig = px.line(x=[x for x in range(len(scores))], y=scores)
             fig.show()
-        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)), end="")
+        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores)), end="")
         if i_episode % print_every == 0:
             print(i_episode, score)
     
     if agent_type=="new" : save_network(agent.actor_local)
+    plot_reward(scores)
     moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
-    return eps
-
-
-
 
 def play():
     agent.actor_local.eval()
     epis = []
     for i_episode in range(4):
-
         state = env.reset()
-
         state = state.reshape(state_size)
-
         while True:
             env.render()
             action = agent.act(state)
@@ -93,10 +73,8 @@ def play():
                 break 
                 
 
-
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-env", type=str,default="Pendulum-v0", help="Environment name")
-parser.add_argument("-info", type=str, help="Information or name of the run")
 parser.add_argument("-ep", type=int, default=100, help="The amount of training episodes, default is 100")
 parser.add_argument("-seed", type=int, default=0, help="Seed for the env and torch network weights, default is 0")
 parser.add_argument("-lr", type=float, default=5e-4, help="Learning rate of adapting the network weights, default is 5e-4")
@@ -151,10 +129,9 @@ if __name__ == "__main__":
             SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
     else: 
         agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
+        SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
         agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-        rews_2 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
-   
+        SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
     t1 = time.time()
     env.close()
     print("training took {} min!".format((t1-t0)/60))
