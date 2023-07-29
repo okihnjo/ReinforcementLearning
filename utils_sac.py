@@ -27,8 +27,8 @@ def initialize_weights(model: nn.Linear):
         torch.nn.init.constant_(model.bias, 0)
 
 
-def save_network(model: nn.Linear):
-    torch.save(model.state_dict(), f"{d1}/{current_time}/trained_pendu.pt")
+def save_network(model: nn.Linear, name: str):
+    torch.save(model.state_dict(), f"{d1}/{current_time}/{name}.pt")
 
 def hidden_init(layer):
     """he Xavier initialization method assumes that the activations of the layer should have a variance of 1. This assumption helps in preventing the activations from vanishing or exploding during training.
@@ -47,14 +47,15 @@ The weights are then randomly initialized within the range (-lim, lim) to ensure
     return (-lim, lim)
 
 def moving_mean(losses: tuple):
+    names = ("actor", "critic", "critic2", "alpha")
     fig = go.Figure()
     for i in range(len(losses)):
-        window_size = 10000
+        window_size = 200
         num_segments = len(losses[i]) // window_size
         segments = np.array_split(losses[i], num_segments)
         averages = [segment.mean() for segment in segments]
         
-        fig.add_trace(go.Scatter(x=[x for x in range(len(averages))], y=averages, mode="markers"))
+        fig.add_trace(go.Scatter(x=[x for x in range(len(averages))], y=averages, mode="markers", name=names[i]))
     fig.show()
     go.Figure.write_image(fig, f"{d1}/{current_time}/images/losses.png")
 

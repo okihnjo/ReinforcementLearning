@@ -14,58 +14,64 @@ from simple_agent import SimpleAgent
 from utils_sac import plot_reward
 import plotly.graph_objects as go
 import numpy as np
-import laserhockey.laser_hockey_env as lh
 import gymnasium as gym
 from importlib import reload
 import copy
 import datetime
+import laserhockey.hockey_env as hock_env
+from utils_sac import  moving_mean, save_network, load_model, plot_reward
 
 np.set_printoptions(suppress=True)
 writer = SummaryWriter("runs/"+'test')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
-    scores_deque = deque(maxlen=100)
+def SAC(n_episodes=500, max_t=500, print_every=50, agent_type="new"):
+    actor_losses, critic_losses, critic2_losses, alpha_losses = [], [], [], []
+    opponent = hock_env.BasicOpponent(weak=False)
     scores = []
-    eps = []
-    average_100_scores = []
-
+    touched = 0
+    agent_1 = hock_env.BasicOpponent(weak=True)
     for i_episode in range(1, n_episodes+1):
-
         state, _ = env.reset()
-        
-       
+        obs_agent2 = env.obs_agent_two()
         score = 0
+        first_time_touch = 1
+        s = -0.5
         for t in range(max_t):
-
-            if i_episode > 15 and comp_flag == False: 
-                env.render()
-            action = agent.act(state) # hier wurde was geändert, state enthält mehr infos
-            action_v = action # hier ebenfalls
-            a2 = np.zeros_like(action_v)
-            next_state, reward, done,_, info = env.step(np.hstack([action_v,a2]))
-            agent.step(state, action, reward, next_state, done, t)
+            action_ag_1 = agent_1.act(state)
+            action_ag_2 = opponent.act(obs_agent2)
+            # action_ag haben shape 4.0
+            # input shape ist aber 8.0 laut game engine
+            env.render()
+            next_state, reward, done,_, info = env.step(np.hstack([action_ag_1,action_ag_2]))
+            if s<info['reward_closeness_to_puck']:
+                s = info['reward_closeness_to_puck']
+                reward= reward + 5
+            else: 
+                reward = reward - 1
+            
+            losses=agent.step(state, action_ag_1, reward, next_state, done, t)
+            if losses != None:
+                actor_losses.append(losses[0])
+                critic_losses.append(losses[1])
+                critic2_losses.append(losses[2])
+                alpha_losses.append(losses[3])
             state = next_state
+            obs_agent2 = env.obs_agent_two()
             score += reward
 
             if done:
                 break 
         
-        scores_deque.append(score)
-        writer.add_scalar("Reward", score, i_episode)
-        writer.add_scalar("average_X", np.mean(scores_deque), i_episode)
-        average_100_scores.append(np.mean(scores_deque))
         scores.append(score)
-        eps.append(reward)
+        writer.add_scalar("Reward", score, i_episode)
+        writer.add_scalar("average_X", np.mean(scores), i_episode)
         if i_episode % print_every == 0:      
-            fig = px.line(x=[x for x in range(len(eps))], y=eps)
-            fig.show()
-        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)), end="")
-        if i_episode % print_every == 0:
-            print('\rEpisode {}  Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores_deque)))
-    
-    if agent_type=="new" : torch.save(agent.actor_local.state_dict(), args.info + ".pt") 
-    return eps
+            plot_reward(scores)
+        print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f} '.format(i_episode, score, np.mean(scores)), end="")
+    moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
+    if agent_type=="new" : save_network(agent.actor_local, "sac")
+
 
 
 
@@ -95,9 +101,8 @@ def play():
 
 
 parser = argparse.ArgumentParser(description="")
-parser.add_argument("-env", type=str,default="Pendulum-v0", help="Environment name")
-parser.add_argument("-info", type=str, help="Information or name of the run")
-parser.add_argument("-ep", type=int, default=100, help="The amount of training episodes, default is 100")
+parser.add_argument("-env", type=str,default="hock_env", help="Environment name")
+parser.add_argument("-ep", type=int, default=500, help="The amount of training episodes, default is 100")
 parser.add_argument("-seed", type=int, default=0, help="Seed for the env and torch network weights, default is 0")
 parser.add_argument("-lr", type=float, default=5e-4, help="Learning rate of adapting the network weights, default is 5e-4")
 parser.add_argument("-a", "--alpha", type=float, help="entropy alpha value, if not choosen the value is leaned by the agent")
@@ -112,7 +117,7 @@ parser.add_argument("--agent_type", type=str, default="new", help="If new, then 
 parser.add_argument("--compare", type=bool, default=False, help="If true, compare the two agents")
 
 args = parser.parse_args()
-reload(lh)
+reload(hock_env)
 
 if __name__ == "__main__":
     env_name = args.env
@@ -131,15 +136,14 @@ if __name__ == "__main__":
     comp_flag = args.compare
 
     t0 = time.time()
-    env = lh.LaserHockeyEnv(mode=lh.LaserHockeyEnv.TRAIN_SHOOTING)
+    env = hock_env.HockeyEnv()
     action_high = env.action_space.high[0]
     action_low = env.action_space.low[0]
     torch.manual_seed(seed)
-    env.seed(seed)
-    np.random.seed(seed)
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
-    agent = Agent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
-    rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=args.agent_type)
+    agent = Agent(state_size=state_size, action_size=4, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
+    SAC(n_episodes=args.ep, max_t=250, print_every=args.print_every, agent_type=args.agent_type)
+    t1=time.time()
     env.close()
     print("training took {} min!".format((t1-t0)/60))

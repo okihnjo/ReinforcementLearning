@@ -14,13 +14,13 @@ import torch.optim as optim
 from networks import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-GAMMA = 0.99
+GAMMA = 0.95
 TAU = 1e-2
 HIDDEN_SIZE = 256
 BUFFER_SIZE = int(1e6)
 BATCH_SIZE = 256        # minibatch size
-LR_ACTOR = 5e-4         # learning rate of the actor 
-LR_CRITIC = 5e-4       # learning rate of the critic
+LR_ACTOR = 1e-4         # learning rate of the actor 
+LR_CRITIC = 1e-4       # learning rate of the critic
 FIXED_ALPHA = None
 
 class Agent():
@@ -37,8 +37,9 @@ class Agent():
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.seed = random.seed(random_seed)
-        
+        self.seed = random.seed(random_seed) # maybe I have to do another seed for q2 ??
+        self.seed_2 = random.seed(random_seed+1)
+
         self.target_entropy = -action_size  # -dim(A)
         self.alpha = 1
         self.log_alpha = torch.tensor([0.0], requires_grad=True)
@@ -53,12 +54,12 @@ class Agent():
         
         # Critic Network (w/ Target Network)
         self.critic1 = Critic(state_size, action_size, random_seed, hidden_size).to(device)
-        self.critic2 = Critic(state_size, action_size, random_seed, hidden_size).to(device)
+        self.critic2 = Critic(state_size, action_size, random_seed+1, hidden_size).to(device)
         
         self.critic1_target = Critic(state_size, action_size, random_seed,hidden_size).to(device)
         self.critic1_target.load_state_dict(self.critic1.state_dict())
 
-        self.critic2_target = Critic(state_size, action_size, random_seed,hidden_size).to(device)
+        self.critic2_target = Critic(state_size, action_size, random_seed+1,hidden_size).to(device)
         self.critic2_target.load_state_dict(self.critic2.state_dict())
 
         self.critic1_optimizer = optim.Adam(self.critic1.parameters(), lr=LR_CRITIC, weight_decay=0)
