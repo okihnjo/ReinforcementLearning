@@ -68,16 +68,16 @@ class Agent():
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
         
 
-    def step(self, state, action, reward, next_state, done, step):
+    def step(self, state, action, reward, next_state, done, step) -> None or tuple:
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
         self.memory.add(state, action, reward, next_state, done)
-
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
-            self.learn(step, experiences, GAMMA)
-            
+            return self.learn(step, experiences, GAMMA)
+        else:
+            return None
     
     def act(self, obs):
         """Returns actions for given state as per current policy."""
@@ -161,6 +161,7 @@ class Agent():
             # ----------------------- update target networks ----------------------- #
             self.soft_update(self.critic1, self.critic1_target, TAU)
             self.soft_update(self.critic2, self.critic2_target, TAU)
+            return actor_loss.item(), critic1_loss.item(), critic2_loss.item(), alpha_loss.item()
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.

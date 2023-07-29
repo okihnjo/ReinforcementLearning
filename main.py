@@ -11,13 +11,14 @@ import argparse
 import plotly.express as px
 from agent import Agent
 from simple_agent import SimpleAgent
-from utils_sac import plot_reward
+from utils_sac import  moving_mean, save_network, load_model
 import plotly.graph_objects as go
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
-    
+    actor_losses, critic_losses, critic2_losses, alpha_losses, avg_loss = [], [], [], [], []
+
         
     scores_deque = deque(maxlen=100)
     scores = []
@@ -33,14 +34,19 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
         score = 0
         for t in range(max_t):
 
-            if i_episode > 150 and comp_flag == False:
+            if i_episode > 198 and comp_flag == False:
                 env.render()
             action = agent.act(state)
             action_v = action
             action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done, info = env.step(action_v)
             
-            agent.step(state, action, reward, next_state, done, t)
+            losses = agent.step(state, action, reward, next_state, done, t)
+            if losses != None:
+                actor_losses.append(losses[0])
+                critic_losses.append(losses[1])
+                critic2_losses.append(losses[2])
+                alpha_losses.append(losses[3])
             state = next_state
             score += reward
 
@@ -48,8 +54,6 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
                 break 
         
         scores_deque.append(score)
-        writer.add_scalar("Reward", score, i_episode)
-        writer.add_scalar("average_X", np.mean(scores_deque), i_episode)
         average_100_scores.append(np.mean(scores_deque))
         scores.append(score)
         eps.append(reward)
@@ -60,7 +64,8 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
         if i_episode % print_every == 0:
             print(i_episode, score)
     
-    if agent_type=="new" : torch.save(agent.actor_local.state_dict(), args.info + ".pt") 
+    if agent_type=="new" : save_network(agent.actor_local)
+    moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
     return eps
 
 
@@ -73,15 +78,14 @@ def play():
 
         state = env.reset()
 
-        state = state.reshape((1,state_size))
+        state = state.reshape(state_size)
 
         while True:
             env.render()
             action = agent.act(state)
-            action_v = action.numpy()
+            action_v = action
             action_v = np.clip(action_v*action_high, action_low, action_high)
             next_state, reward, done, info = env.step(action_v)
-            next_state = next_state.reshape((1,state_size))
             state = next_state
             epis.append(reward)
             if done:
@@ -103,7 +107,7 @@ parser.add_argument("--print_every", type=int, default=100, help="Prints every x
 parser.add_argument("-bs", "--batch_size", type=int, default=256, help="Batch size, default is 256")
 parser.add_argument("-t", "--tau", type=float, default=1e-2, help="Softupdate factor tau, default is 1e-2")
 parser.add_argument("-g", "--gamma", type=float, default=0.99, help="discount factor gamma, default is 0.99")
-parser.add_argument("--saved_model", type=str, default=None, help="Load a saved model to perform a test run!")
+parser.add_argument("-saved_model", type=str, default=None, help="Load a saved model to perform a test run!")
 parser.add_argument("--agent_type", type=str, default="new", help="If new, then double q is used. Use given old, then simple version is executed")
 parser.add_argument("--compare", type=bool, default=False, help="If true, compare the two agents")
 
@@ -126,7 +130,6 @@ if __name__ == "__main__":
     comp_flag = args.compare
 
     t0 = time.time()
-    writer = SummaryWriter("runs/"+args.info)
     env = gym.envs.make(env_name)
     action_high = env.action_space.high[0]
     action_low = env.action_space.low[0]
@@ -142,7 +145,7 @@ if __name__ == "__main__":
         else:
             agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
         if saved_model != None:
-            agent.actor_local.load_state_dict(torch.load(saved_model))
+            load_model(agent.actor_local, saved_model)
             play()
         else:    
             SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
@@ -151,10 +154,7 @@ if __name__ == "__main__":
         rews_1 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
         agent = SimpleAgent(state_size=state_size, action_size=action_size, random_seed=seed,hidden_size=HIDDEN_SIZE, action_prior="uniform") #"normal"
         rews_2 = SAC(n_episodes=args.ep, max_t=500, print_every=args.print_every, agent_type=agent_type)
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_1))], y=rews_1, mode="lines"))
-    fig.add_trace(go.Scatter(x=[x for x in range(len(rews_2))], y=rews_2, mode="lines"))
-    fig.show()
+   
     t1 = time.time()
     env.close()
     print("training took {} min!".format((t1-t0)/60))
