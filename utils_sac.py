@@ -50,7 +50,7 @@ def moving_mean(losses: tuple):
     names = ("actor", "critic", "critic2", "alpha")
     fig = go.Figure()
     for i in range(len(losses)):
-        window_size = 200
+        window_size = 400
         num_segments = len(losses[i]) // window_size
         segments = np.array_split(losses[i], num_segments)
         averages = [segment.mean() for segment in segments]
