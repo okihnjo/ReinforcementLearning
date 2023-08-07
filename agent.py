@@ -41,7 +41,7 @@ class Agent():
         self.seed_2 = random.seed(random_seed+1)
 
         self.target_entropy = -action_size  # -dim(A)
-        self.alpha = 1
+        self.alpha = 0.2
         self.log_alpha = torch.tensor([0.0], requires_grad=True)
         self.alpha_optimizer = optim.Adam(params=[self.log_alpha], lr=LR_ACTOR) 
         self._action_prior = action_prior
@@ -75,7 +75,7 @@ class Agent():
         self.memory.add(state, action, reward, next_state, done)
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
+            experiences = self.memory.sample(BATCH_SIZE)
             return self.learn(step, experiences, GAMMA)
         else:
             return None
@@ -108,20 +108,21 @@ class Agent():
 
         # ---------------------------- update critic ---------------------------- #
         # Get predicted next-state actions and Q values from target models
-        next_action, log_pis_next = self.actor_local.evaluate(next_states)
+        with torch.no_grad():
+            next_action, log_pis_next = self.actor_local.evaluate(next_states)
 
-        Q_target1_next = self.critic1_target(next_states.to(device), next_action.squeeze(0).to(device))
-        Q_target2_next = self.critic2_target(next_states.to(device), next_action.squeeze(0).to(device))
+            Q_target1_next = self.critic1_target(next_states.to(device), next_action.squeeze(0).to(device))
+            Q_target2_next = self.critic2_target(next_states.to(device), next_action.squeeze(0).to(device))
 
-        # take the mean of both critics for updating
-        Q_target_next = torch.min(Q_target1_next, Q_target2_next)
-        
-        if FIXED_ALPHA == None:
-            # Compute Q targets for current states (y_i) Seite 15 - The inclusion of (1 - dones) allows SAC to properly handle terminal 
-            # states by excluding the discount factor for terminal states and considering only the immediate rewards in those cases.
-            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
-        else:
-            Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
+            # take the mean of both critics for updating
+            Q_target_next = torch.min(Q_target1_next, Q_target2_next)
+
+            if FIXED_ALPHA == None:
+                # Compute Q targets for current states (y_i) Seite 15 - The inclusion of (1 - dones) allows SAC to properly handle terminal 
+                # states by excluding the discount factor for terminal states and considering only the immediate rewards in those cases.
+                Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
+            else:
+                Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
         # Compute critic loss
         Q_1 = self.critic1(states, actions).cpu()
         Q_2 = self.critic2(states, actions).cpu()
@@ -138,26 +139,28 @@ class Agent():
         self.critic2_optimizer.step()
         if step % d == 0:
         # ---------------------------- update actor ---------------------------- #
+            actions_pred, log_pis = self.actor_local.evaluate(states)
+            q_1_pi = self.critic1(states, actions_pred)
+            q_2_pi = self.critic2(states, actions_pred)
+            min_q_pi = torch.min(q_1_pi, q_2_pi)
+            actor_loss = (self.alpha * log_pis - min_q_pi).mean()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
             if FIXED_ALPHA == None:
-                alpha = torch.exp(self.log_alpha)
                 # Compute alpha loss
-                actions_pred, log_pis = self.actor_local.evaluate(states)
                 alpha_loss = - (self.log_alpha.cpu() * (log_pis.cpu() + self.target_entropy).detach().cpu()).mean() # Seite 16
                 self.alpha_optimizer.zero_grad()
                 alpha_loss.backward()
                 self.alpha_optimizer.step()
-                
-                self.alpha = alpha
+                self.alpha = self.log_alpha.exp()
                 # Compute actor loss
-                actor_loss = (alpha * log_pis - Q_target_next).mean()
                 #actor_loss = (alpha * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu() - policy_prior_log_probs ).mean()
             else:
-                actor_loss = (FIXED_ALPHA * log_pis - Q_target_next).mean()
+                actor_loss = (FIXED_ALPHA * log_pis - min_q_pi).mean()
                 #actor_loss = (FIXED_ALPHA * log_pis.squeeze(0).cpu() - self.critic1(states, actions_pred.squeeze(0)).cpu()- policy_prior_log_probs ).mean()
             # Minimize the loss
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
+            
 
             # ----------------------- update target networks ----------------------- #
             self.soft_update(self.critic1, self.critic1_target, TAU)

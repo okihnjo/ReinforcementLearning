@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
+    
     actor_losses, critic_losses, critic2_losses, alpha_losses = [], [], [], []
     scores = []
     average_score = []
@@ -45,12 +46,13 @@ def SAC(n_episodes=200, max_t=500, print_every=10, agent_type="new"):
         scores.append(score)
         if i_episode % print_every == 0:      
             fig = px.line(x=[x for x in range(len(scores))], y=scores)
+            moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
             fig.show()
         print('\rEpisode {} Reward: {:.2f}  Average100 Score: {:.2f}'.format(i_episode, score, np.mean(scores)), end="")
         if i_episode % print_every == 0:
             print(i_episode, score)
     
-    if agent_type=="new" : save_network(agent.actor_local)
+    if agent_type=="new" : save_network(agent.actor_local, "pendu")
     plot_reward(scores)
     moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
 

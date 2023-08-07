@@ -11,8 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            //"args": ["-env", "Pendulum-v0", "-ep", "4110"]
-            "args": ["-env", "Pendulum-v0", "-ep", "121", "-saved_model", "30.07.2023/16.50.59/sac_hockey.pt"]
+            "args": ["-env", "Pendulum-v0", "-ep", "200"]
+            //"args": ["-env", "Pendulum-v0", "-ep", "121", "-saved_model", "07.08.2023/00.00.16/sac_hockey.pt"]
             //"args": ["-env", "Pendulum-v0", "-ep", "200", "-saved_model", "29.07.2023/17.45.11/trained_pendu.pt"]
         }
     ]

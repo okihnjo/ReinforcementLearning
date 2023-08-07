@@ -29,7 +29,7 @@ def initialize_weights(model: nn.Linear):
 
 def save_network(model: nn.Linear, name: str):
     torch.save(model.state_dict(), f"{d1}/{current_time}/{name}.pt")
-
+    print("\nsaved model in ", f"{d1}/{current_time}/{name}.pt\n")
 def hidden_init(layer):
     """he Xavier initialization method assumes that the activations of the layer should have a variance of 1. This assumption helps in preventing the activations from vanishing or exploding during training.
 The variance of the activations in a fully connected layer is influenced by the number of input units or the fan-in of the layer. Intuitively, a larger fan-in requires smaller weights to prevent the variance from exploding, while a smaller fan-in requires larger weights to prevent the variance from vanishing.
@@ -55,17 +55,17 @@ def moving_mean(losses: tuple):
         segments = np.array_split(losses[i], num_segments)
         averages = [segment.mean() for segment in segments]
         
-        fig.add_trace(go.Scatter(x=[x for x in range(len(averages))], y=averages, mode="markers", name=names[i]))
+        fig.add_trace(go.Scatter(x=[x for x in range(len(averages))], y=averages, mode="markers", name=names[i], showlegend=True))
     fig.show()
     go.Figure.write_image(fig, f"{d1}/{current_time}/images/losses.png")
 
 def load_model(model: nn.Linear, path: str):
     model.load_state_dict(torch.load(path))
 
-def plot_reward(rew: list):
+def plot_reward(rew: list, name: str):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[x for x in range(len(rew))], y=rew, mode="markers"))
+    fig.add_trace(go.Scatter(x=[x for x in range(len(rew))], y=rew, mode="markers", name=name, showlegend=True))
     fig.show()
-    go.Figure.write_image(fig, f"{d1}/{current_time}/images/reward.png")
+    go.Figure.write_image(fig, f"{d1}/{current_time}/images/{name}.png")
 
 
