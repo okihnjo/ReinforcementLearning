@@ -32,7 +32,7 @@ def SAC(n_episodes=500, max_t=500, agent_type="new", mode: int=0):
         first_touch_flag = False
         for t in range(max_t):
             if random.random() < p:
-                p = p * 0.6
+                p = p * 0.5
                 action_ag_1 = agent_support.act(state) 
                 str_oppponent_cnt += 1   
             else:
@@ -42,7 +42,7 @@ def SAC(n_episodes=500, max_t=500, agent_type="new", mode: int=0):
             if info['reward_touch_puck'] == 1 and first_touch_flag is False:
                 reward += puck_touch_penalty * t
                 first_touch_flag = True
-                if t<125:
+                if t<110:
                     reward += 0.5
             if not first_touch_flag:
                 reward -= puck_touch_penalty            
@@ -209,8 +209,21 @@ if __name__ == "__main__":
         print("-----------------------\n")
         SAC(n_episodes=1000, max_t=800, agent_type=args.agent_type, mode=0)
         print("\nTraining finished. Playing now for evaluation:\n")
+        print("-----------------------\n")
+        SAC(n_episodes=750, max_t=800, agent_type=args.agent_type, mode=2)
+        print("\nTraining finished. Playing now for evaluation:\n")
+        play(20)
+        print("\nPlaying finished. We start training again..\n")
+        print("-----------------------\n")
+        SAC(n_episodes=500, max_t=800, agent_type=args.agent_type, mode=1)
+        print("\nTraining finished. Playing now for evaluation:\n")
+        play(20)
+        print("\nPlaying finished. We start training again..\n")
+        print("-----------------------\n")
+        SAC(n_episodes=750, max_t=800, agent_type=args.agent_type, mode=0)
+        print("\nTraining finished. Playing now for evaluation:\n")
         moving_mean((actor_losses, critic_losses, critic2_losses, alpha_losses))
-        for i in range(20):
+        for i in range(10):
             play(30)
     
         window_size = 400
