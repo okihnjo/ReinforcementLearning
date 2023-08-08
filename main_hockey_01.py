@@ -19,8 +19,8 @@ def SAC(n_episodes=500, max_t=500, agent_type="new", mode: int=0):
     print(f"Playing {n_episodes} episodes with max_t={max_t} with mode {mode} \n")
     env=hock_env.HockeyEnv(mode=mode)
     str_oppponent_cnt = 0
-    p=1000
-    opponent = hock_env.BasicOpponent(weak=True)
+    p=10000
+    opponent = hock_env.BasicOpponent(weak=True)    
     agent_support = hock_env.BasicOpponent(weak=False)
     puck_touch_penalty = 0.2
     closeness_intensity = 6
@@ -32,7 +32,7 @@ def SAC(n_episodes=500, max_t=500, agent_type="new", mode: int=0):
         first_touch_flag = False
         for t in range(max_t):
             if random.random() < p:
-                p = p * 0.5
+                p = p * 0.6
                 action_ag_1 = agent_support.act(state) 
                 str_oppponent_cnt += 1   
             else:
@@ -42,7 +42,7 @@ def SAC(n_episodes=500, max_t=500, agent_type="new", mode: int=0):
             if info['reward_touch_puck'] == 1 and first_touch_flag is False:
                 reward += puck_touch_penalty * t
                 first_touch_flag = True
-                if t<100:
+                if t<125:
                     reward += 0.5
             if not first_touch_flag:
                 reward -= puck_touch_penalty            
@@ -144,8 +144,8 @@ if __name__ == "__main__":
     env_for_shape.close()
     if saved_model != None:
         load_model(agent.actor_local, saved_model)
-        load_model(agent_2.actor_local, saved_model)
-        play(eps=100)
+        for i in range(10):
+            play(eps=10)
     else:
         SAC(n_episodes=2000, max_t=800, agent_type=args.agent_type, mode=0)
         print("\nTraining finished. Playing now for evaluation:\n")
