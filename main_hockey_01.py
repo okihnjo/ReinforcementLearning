@@ -84,7 +84,7 @@ def play(eps: int):
             #env.render()
             action_ag_1 = agent.act(state)
             action_ag_2 = opponent.act(obs_opponent)
-            next_state, reward, done,_, info = env.step(np.hstack([action_ag_1,action_ag_2]))
+            next_state, reward, done,_, info = env.step(np.hstack( [action_ag_1,action_ag_2]))
             state = next_state
             obs_opponent = env.obs_agent_two()
             epis.append(reward)
