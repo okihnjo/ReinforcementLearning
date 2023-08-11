@@ -1,34 +1,33 @@
 import numpy as np
-import torch
-import time
-import argparse
-import plotly.express as px
+
 from agent import Agent
-from utils_sac import plot_reward
 import plotly.graph_objects as go
 import numpy as np
-from importlib import reload
 import laserhockey.hockey_env as hock_env
-from utils_sac import  moving_mean, save_network, load_model, plot_reward
-import random
+from utils_sac import load_model
 import torch.nn as nn
 import pandas as pd
-def play_2(eps: int, agent1: nn.Linear, agent2: nn.Linear):
+
+# run this python file to see my best two agents play against the weak opponent. The result will be saved in the eval_folder
+
+def play(eps: int, agent1: nn.Linear):
     env = hock_env.HockeyEnv()
     global games_played
-    load_model(agent1.actor_local, "08.08.2023/11.25.38/sac_hockey.pt")
-    load_model(agent2.actor_local, "07.08.2023/14.31.37/sac_hockey.pt")
+
+    load_model(agent1.actor_local, "05.08.2023/21.48.57/sac_hockey.pt") # best model against weak, used in tournament
+   # load_model(agent1.actor_local, "09.08.2023/21.30.28/sac_hockey.pt") # second best against weak, also quite strong
+
+    opponent = hock_env.BasicOpponent(weak=True)
     agent1.actor_local.eval()     
-    agent2.actor_local.eval()
     stats = []
-    for i_episode in range(eps):
+    for episode in range(eps):
         state,_ = env.reset()
         obs_opponent = env.obs_agent_two()
         while True:
             #env.render()
             action_ag_1 = agent1.act(state)
-            action_ag_2 = agent2.act(obs_opponent)
-            next_state, reward, done,_, info = env.step(np.hstack([action_ag_1,action_ag_2]))
+            opponent_action = opponent.act(obs_opponent)
+            next_state, reward, done,_, info = env.step(np.hstack([action_ag_1,opponent_action]))
             state = next_state
             obs_opponent = env.obs_agent_two()
             if done:
@@ -53,31 +52,30 @@ def plot_win_percentage(df: pd.DataFrame, number_games: int):
                     mode='lines',
                     name='myAgent'))
     fig.add_trace(go.Scatter(x=df["opponent"].index, y=df["opponent"],
-                    mode='lines+markers',
-                    name='opponent'))
+                    mode='lines',
+                    name='WeakOpponent'))
+    fig.update_layout(title=f"Win percentage over {number_games} games. Endscore: {end_score_meins}:{end_score_opponent}, draws: {draws}",)
     fig.show()
-# Show the plot
+    go.Figure.write_image(fig, f"eval/images/myStrongVSopponentWeak.png")
+
 
 env_for_shape = hock_env.HockeyEnv()
-action_high = env_for_shape.action_space.high[0]
-action_low = env_for_shape.action_space.low[0]
 state_size = env_for_shape.observation_space.shape[0]
-action_size = env_for_shape.action_space.shape[0]
-agent = Agent(state_size=state_size, action_size=4,hidden_size=256,random_seed=0, action_prior="uniform") #"normal"
-agent_2 = Agent(state_size=state_size, action_size=4,hidden_size=256, random_seed=0,action_prior="uniform") #"normal"
+agent = Agent(state_size=state_size, action_size=4,hidden_size=256,random_seed=0) 
 
 if __name__ == "__main__":
-    end_score_meins = 1
-    end_score_opponent = 1
-    draws = 1
+    end_score_meins = 0
+    end_score_opponent = 0
+    draws = 0
     games_played = 0
     percentage_wins_mine, percentage_wins_opponent = [], []
-    for s in range(40):
-        for i in range(10):
+    for s in range(100):
+        for i in range(4):
             games_played+=1
-            play_2(1, agent, agent_2)
+            play(1, agent)
         percentage_wins_opponent.append(end_score_opponent/games_played)
         percentage_wins_mine.append(end_score_meins/games_played)
     my_pd = pd.DataFrame({"my_agent":percentage_wins_mine, "opponent":percentage_wins_opponent})
     plot_win_percentage(my_pd, games_played)
-    print(f"end_score_meins: {end_score_meins}, end_score_opponent: {end_score_opponent}")
+
+    print(f"end_score_meins: {end_score_meins}, end_score_opponent: {end_score_opponent}, draws: {draws}")

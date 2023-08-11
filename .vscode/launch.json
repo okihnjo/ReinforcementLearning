@@ -11,9 +11,10 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            //"args": ["-env", "Pendulum-v0", "-ep", "200"]
-            "args": ["-env", "Pendulum-v0", "-ep", "121", "-saved_model", "07.08.2023/14.31.37/sac_hockey.pt"]
-            //"args": ["-env", "Pendulum-v0", "-ep", "200", "-saved_model", "29.07.2023/17.45.11/trained_pendu.pt"]
+            //"args": ["-env", ""] // train hockey
+            //"args": ["-env", "Pendulum-v0", "-ep", "200"]  // train pendulum
+            "args": ["-env", "",  "-saved_model", "09.08.2023/21.30.28/sac_hockey.pt"] // main_hockey, playing hockey or go to eval
+            //"args": ["-env", "Pendulum-v0", "-ep", "200", "-saved_model", "29.07.2023/17.45.11/trained_pendu.pt"] // main_p.py, playing pendu
         }
     ]
 }
