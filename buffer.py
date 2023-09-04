@@ -17,8 +17,9 @@ class ReplayBuffer:
     
     def __init__(self, action_size, buffer_size, batch_size):
         self.action_size = action_size
-        self.memory = deque(maxlen=buffer_size)
         self.batch_size = batch_size
+        self.memory = deque(maxlen=buffer_size)
+        
     
     def sample(self, batch_size) -> tuple:
         experiences = random.sample(self.memory, k=batch_size)

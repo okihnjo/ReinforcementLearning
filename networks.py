@@ -45,11 +45,7 @@ class Actor(nn.Module):
         self.log_std_linear = nn.Linear(hidden_size, action_size)
 
 
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*xavier_init(self.fc1))
-        self.fc2.weight.data.uniform_(*xavier_init(self.fc2))
-        self.mu.weight.data.uniform_(-self.init_w, self.init_w)
-        self.log_std_linear.weight.data.uniform_(-self.init_w, self.init_w)
+    
 
     def forward(self, state):
 

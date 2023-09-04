@@ -56,7 +56,7 @@ def plot_win_percentage(df: pd.DataFrame, number_games: int):
                     name='WeakOpponent'))
     fig.update_layout(title=f"Win percentage over {number_games} games. Endscore: {end_score_meins}:{end_score_opponent}, draws: {draws}",)
     fig.show()
-    go.Figure.write_image(fig, f"eval/images/myStrongVSopponentWeak.png")
+    go.Figure.write_image(fig, f"eval/images/myStrongVSopponentWeakdfsfs.png")
 
 
 env_for_shape = hock_env.HockeyEnv()

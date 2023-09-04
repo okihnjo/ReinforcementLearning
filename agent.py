@@ -112,21 +112,21 @@ class Agent():
         with torch.no_grad():
             next_action, log_pis_next = self.actor_local.evaluate(next_states)
 
-            Q_target1_next = self.critic1_target(next_states.to(device), next_action.squeeze(0).to(device))
-            Q_target2_next = self.critic2_target(next_states.to(device), next_action.squeeze(0).to(device))
+            q_target1_next = self.critic1_target(next_states.to(device), next_action.squeeze(0).to(device))
+            q_target2_next = self.critic2_target(next_states.to(device), next_action.squeeze(0).to(device))
 
             # take the minimum of both critics for updating
-            Q_target_next = torch.min(Q_target1_next, Q_target2_next)
+            q_target_next = torch.min(q_target1_next, q_target2_next)
 
             if FIXED_ALPHA == None:
-                Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
+                q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (q_target_next.cpu() - self.alpha * log_pis_next.squeeze(0).cpu()))
             else:
-                Q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (Q_target_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
+                q_targets = rewards.cpu() + (gamma * (1 - dones.cpu()) * (q_target_next.cpu() - FIXED_ALPHA * log_pis_next.squeeze(0).cpu()))
         # Compute critic loss
-        Q_1 = self.critic1(states, actions).cpu()
-        Q_2 = self.critic2(states, actions).cpu()
-        critic1_loss = 0.5*F.mse_loss(Q_1, Q_targets.detach())
-        critic2_loss = 0.5*F.mse_loss(Q_2, Q_targets.detach())
+        q_1 = self.critic1(states, actions).cpu()
+        q_2 = self.critic2(states, actions).cpu()
+        critic1_loss = 0.5*F.mse_loss(q_1, q_targets.detach())
+        critic2_loss = 0.5*F.mse_loss(q_2, q_targets.detach())
         # Update both critics
         self.critic1_optimizer.zero_grad()
         critic1_loss.backward()
@@ -160,8 +160,7 @@ class Agent():
         return actor_loss.item(), critic1_loss.item(), critic2_loss.item(), alpha_loss.item()
 
     def soft_update(self, used_model, target_model, tau):
-        """Soft update \n
-        θ_target = τ*θ_local + (1 - τ)*θ_target (not in paper)
+        """ θ_target = τ*θ_local + (1 - τ)*θ_target (not in paper)
 
         Args:
             used_model: current model where weights will be copied from
