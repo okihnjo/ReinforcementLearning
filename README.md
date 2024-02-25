@@ -14,7 +14,7 @@ After establishing a good foundation and successfully managing the pendulum envi
 The hockey environment is a game between two players, where we can control the left player
 
 ## Using SAC
-Soft Actor-Critic (SAC) is an off-policy algorithm. Unlike other off-policy algorithms (e.g. TD3), its exploration comes from its emphasis on maximizing the entropy, which represents the uncertainty in the agent’s actions. By maximizing entropy, SAC encourages exploration and prevents the agent from prematurely converging to maybe suboptimal policies. For further information about SAC, my approach and results, please take a closer at my paper.
+Soft Actor-Critic (SAC) is an off-policy algorithm. Unlike other off-policy algorithms (e.g. TD3), its exploration comes from its emphasis on maximizing the entropy, which represents the uncertainty in the agent’s actions. By maximizing entropy, SAC encourages exploration and prevents the agent from prematurely converging to maybe suboptimal policies. For further information about SAC, my approach and results, please take a closer at my [paper](./sac_okan.pdf).
 
 ## Result
 
