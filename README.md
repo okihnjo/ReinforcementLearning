@@ -7,7 +7,7 @@ As the hockey environment was completely new and a little more challenging, a mo
 
 ### Pendulum
 Firstly, the agent was trained to handle the pendulum environment. It is considered a relatively easy environment which helped me to see if the approaches and implementations I did were legitimate.
-For more information about this game, have a look at the official <a src="https://www.gymlibrary.dev/environments/classic_control/pendulum/">gym documentation</a>
+For more information about this game, have a look at the official [gym documentation](https://www.gymlibrary.dev/environments/classic_control/pendulum/).
 
 ### Hockey
 After establishing a good foundation and successfully managing the pendulum environment, the hockey game provided by our professor was then targeted.
