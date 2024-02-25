@@ -17,3 +17,8 @@ The hockey environment is a game between two players, where we can control the l
 Soft Actor-Critic (SAC) is an off-policy algorithm. Unlike other off-policy algorithms (e.g. TD3), its exploration comes from its emphasis on maximizing the entropy, which represents the uncertainty in the agent’s actions. By maximizing entropy, SAC encourages exploration and prevents the agent from prematurely converging to maybe suboptimal policies. For further information about SAC, my approach and results, please take a closer at my paper.
 
 ## Result
+
+https://github.com/okihnjo/reinforcementLearning/assets/50614363/03045774-9a67-49b1-83a1-1f47f327b92e
+
+
+
